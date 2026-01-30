@@ -19,3 +19,6 @@ ENV/
 *.egg-info/
 dist/
 build/
+
+# Runtime generated files
+channel_mappings.json
