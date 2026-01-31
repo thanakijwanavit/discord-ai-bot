@@ -1,6 +1,10 @@
-# Channel Manager Usage Guide
+# Gas Town Notification Formatter Usage
 
-The `ChannelManager` class provides channel management utilities for the Discord bot.
+Message formatting module for Gas Town events → Discord embeds.
+
+## Overview
+
+This module provides `NotificationFormatter` class that converts Gas Town events (nudge, broadcast, convoy updates, escalations) into Discord embed objects for the core crew's MCP server.
 
 ## Installation
 
@@ -8,73 +12,62 @@ The `ChannelManager` class provides channel management utilities for the Discord
 pip install -r requirements.txt
 ```
 
-## Usage
+## Quick Start
 
 ```python
-import discord
-from channel_manager import ChannelManager
+from formatter import NotificationFormatter, format_event
 
-# Initialize with your Discord guild
-guild = client.get_guild(guild_id)
-channel_manager = ChannelManager(guild)
+# Option 1: Use the formatter class
+formatter = NotificationFormatter()
+embed = formatter.format_nudge(
+    from_agent="discord_bot/crew/notify",
+    to_agent="discord_bot/crew/core",
+    message="Check your hook",
+    rig="discord_bot"
+)
 
-# Get or create a channel for a Gas Town rig
-channel = await channel_manager.get_or_create_channel("discord_bot")
-
-# Send a message to that channel
-await channel.send("Hello from Gas Town!")
-
-# List all rig -> channel mappings
-mappings = channel_manager.list_mappings()
-print(mappings)  # {'discord_bot': 123456789, 'gastown': 987654321}
-
-# Get channel ID without creating
-channel_id = channel_manager.get_channel_id("discord_bot")
-
-# Delete a channel
-deleted = await channel_manager.delete_channel("old_rig")
+# Option 2: Use the convenience function
+embed = format_event(
+    "nudge",
+    from_agent="discord_bot/crew/notify",
+    to_agent="mayor/",
+    message="Status update",
+    rig="discord_bot"
+)
 ```
 
-## Integration with MCP Server
+## Supported Event Types
 
-The core bot can use ChannelManager in the MCP `send_discord_message` tool:
+- Nudge (💬) - Direct messages between agents
+- Broadcast (📢) - Town-wide or rig-wide broadcasts
+- Mail (📧) - Async messages with subjects
+- Convoy Updates (🚚) - Batch work progress tracking
+- Escalations (🚨) - Critical issues requiring attention
+- Handoff (🤝) - Context cycling between sessions
+- Completion (✅) - Work completion notifications
+
+## Color Scheme
+
+| Event Type | Color | Hex Code |
+|------------|-------|----------|
+| Nudge | Discord Blurple | #5865F2 |
+| Broadcast | Yellow | #FEE75C |
+| Mail | Green | #57F287 |
+| Convoy Update | Pink | #EB459E |
+| Escalation | Red | #ED4245 |
+| Handoff | Dark Green | #3BA55D |
+| Completion | Green | #57F287 |
+
+## Integration with Core
+
+The core crew's MCP server should import and use the formatter:
 
 ```python
-from mcp.server import Server
-from channel_manager import ChannelManager
+from notify.formatter import NotificationFormatter, format_event
 
-@server.tool()
-async def send_discord_message(rig_name: str, message: str):
-    """Send a message to the Discord channel for a specific rig."""
-    channel = await channel_manager.get_or_create_channel(rig_name)
-    await channel.send(message)
-    return f"Message sent to {rig_name} channel"
+formatter = NotificationFormatter()
+embed = format_event("nudge", from_agent="...", to_agent="...", message="...")
+await channel.send(embed=discord.Embed.from_dict(embed))
 ```
 
-## Channel Naming
-
-Channels are automatically named with the `gt-` prefix and sanitized:
-- `discord_bot` → `gt-discord-bot`
-- `gastown` → `gt-gastown`
-- `My Project` → `gt-my-project`
-
-## Persistence
-
-Channel mappings are stored in `channel_mappings.json` (gitignored). The file persists across bot restarts and is automatically managed by the ChannelManager.
-
-## API Reference
-
-### `ChannelManager(guild, mappings_file='channel_mappings.json')`
-Initialize the manager with a Discord guild.
-
-### `async get_or_create_channel(rig_name: str) -> discord.TextChannel`
-Get existing channel or create new one for a rig. Automatically updates mappings.
-
-### `get_channel_id(rig_name: str) -> Optional[int]`
-Get channel ID for a rig without creating a channel.
-
-### `list_mappings() -> Dict[str, int]`
-Get all rig name to channel ID mappings.
-
-### `async delete_channel(rig_name: str) -> bool`
-Delete a channel and remove its mapping. Returns True if deleted.
+See `examples.py` for working examples of all event types.
